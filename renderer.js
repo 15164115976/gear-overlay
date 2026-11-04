@@ -13,6 +13,7 @@ const elGrid = $('grid');
 const elPop = $('lvlpop');
 const elMenu = $('menu');
 const elGrip = $('grip');
+const elQuit = $('quit');
 const elModal = $('modal');
 const elCode = $('codeArea');
 const elMsg = $('mmsg');
@@ -436,10 +437,20 @@ function expand() {
 }
 
 elFold.addEventListener('click', (e) => { e.stopPropagation(); collapse(); });
+if (elQuit) elQuit.addEventListener('click', (e) => { e.stopPropagation(); api.quit(); });
 
 document.addEventListener('contextmenu', (e) => {
   if (e.target.closest('.tab, .menu, .lvlpop, .modal, input, textarea')) return;
   e.preventDefault();
+  // 收起态窗口只有 78px，长菜单会被裁掉，只留最短的两条
+  if (S.collapsed) {
+    showMenu(e.clientX, e.clientY, [
+      { t: '展开面板', f: expand },
+      { sep: 1 },
+      { t: '退出', f: () => api.quit() }
+    ]);
+    return;
+  }
   showMenu(e.clientX, e.clientY, [
     { t: '功能码…', f: () => openModal('export') },
     { sep: 1 },

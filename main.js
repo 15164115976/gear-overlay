@@ -131,6 +131,15 @@ function setCollapsed(v) {
   rememberPos();
 }
 
+/** 退出：正常 quit，1.2 秒还没退就直接 exit，避免卡住关不掉 */
+function quitApp() {
+  rememberPos();
+  try { fs.writeFileSync(dataFile(), JSON.stringify(store, null, 2)); } catch (e) {}
+  if (dragTimer) { clearInterval(dragTimer); dragTimer = null; }
+  app.quit();
+  setTimeout(() => app.exit(0), 1200);
+}
+
 function createWindow() {
   const { w, h } = store.collapsed
     ? { w: ICON_WIN, h: ICON_WIN }
@@ -249,11 +258,7 @@ function registerIpc() {
     rememberPos();
   });
 
-  ipcMain.on('app:quit', () => {
-    rememberPos();
-    try { fs.writeFileSync(dataFile(), JSON.stringify(store, null, 2)); } catch (e) {}
-    app.quit();
-  });
+  ipcMain.on('app:quit', () => quitApp());
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -273,6 +278,9 @@ if (!gotLock) {
       setCollapsed(!store.collapsed);
       win.webContents.send('ui:collapsed', store.collapsed);
     });
+
+    // 万一界面点不到，用快捷键直接退
+    globalShortcut.register('Control+Alt+Q', () => quitApp());
   });
 
   app.on('will-quit', () => globalShortcut.unregisterAll());
