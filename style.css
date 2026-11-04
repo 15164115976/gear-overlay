@@ -1,0 +1,264 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* 图片一律不许被拖（否则会拖出一个半透明副本） */
+img {
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+#wrap { position: relative; width: 100%; height: 100%; }
+body.dragging, body.dragging * { cursor: grabbing !important; }
+
+/* ---------- 收起态的小图标 ---------- */
+.icon {
+  position: absolute; left: 10px; top: 10px;
+  width: 58px; height: 58px;
+  border-radius: 7px;
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 0 0 1px rgba(214, 147, 246, .55),
+              0 0 16px rgba(190, 110, 240, .55);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.icon img { width: 100%; height: 100%; display: block; pointer-events: none; }
+.icon:hover { box-shadow: 0 0 0 1px rgba(233, 179, 255, .95), 0 0 24px rgba(214, 130, 255, .85); }
+/* 拖动中：放大一点 + 强光，明显在“拿着它” */
+.icon.moving {
+  cursor: grabbing;
+  transform: scale(1.06);
+  animation: grabPulse .9s ease-in-out infinite;
+}
+@keyframes grabPulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(240, 200, 255, .95), 0 0 24px rgba(214, 130, 255, .8); }
+  50%      { box-shadow: 0 0 0 2px rgba(255, 235, 255, 1), 0 0 34px rgba(226, 150, 255, 1); }
+}
+
+/* ---------- 展开态面板：整体透明，只有方块浮在画面上 ---------- */
+.panel {
+  position: absolute; left: 18px; top: 18px;
+  width: 164px; height: 366px;
+  padding: 12px 10px 8px;
+  display: flex; flex-direction: column;
+  background: none;
+  border: none;
+  transform-origin: left top;
+}
+
+/* 头部：收起图标 + 角色页签 */
+.hd {
+  flex: 0 0 24px;
+  display: flex; align-items: center; gap: 4px;
+  padding-bottom: 2px;
+  min-width: 0;
+}
+.fold {
+  flex: 0 0 auto;
+  width: 22px; height: 22px;
+  border-radius: 4px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(214, 147, 246, .6), 0 0 8px rgba(190, 110, 240, .5);
+  transition: box-shadow .12s ease, transform .12s ease;
+}
+.fold:hover {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 1px rgba(233, 179, 255, .95), 0 0 14px rgba(214, 130, 255, .9);
+}
+
+.tabs { display: flex; gap: 3px; flex: 1; overflow: hidden; min-width: 0; }
+.tab {
+  font-size: 10px; line-height: 17px;
+  color: #c3aede;
+  padding: 0 6px;
+  border: 1px solid rgba(150, 110, 180, .45);
+  border-radius: 2px;
+  background: rgba(20, 12, 30, .86);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 74px;
+  flex: 0 0 auto;
+}
+.tab:hover { color: #f0e2ff; border-color: rgba(190, 140, 230, .7); }
+.tab.on {
+  color: #f8ecff;
+  border-color: rgba(214, 147, 246, .9);
+  background: rgba(96, 44, 148, .92);
+  box-shadow: 0 0 9px rgba(200, 120, 255, .45);
+}
+.tab.add { color: #a190b5; border-style: dashed; padding: 0 4px; max-width: none; }
+
+/* ---------- 装备格子 ---------- */
+.grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: repeat(6, 1fr);
+  gap: 6px;
+  padding-top: 6px;
+  min-height: 0;
+}
+.slot {
+  position: relative;
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 4px;
+  padding: 5px 4px;
+  border: 1px solid rgba(150, 108, 180, .45);
+  border-bottom: 2px solid #d693f6;
+  background: linear-gradient(180deg, rgba(36, 21, 51, .96) 0%, rgba(23, 15, 34, .96) 62%, rgba(18, 11, 26, .96) 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05), 0 2px 8px rgba(0, 0, 0, .5), 0 0 7px rgba(180, 110, 235, .22);
+  cursor: pointer;
+  overflow: hidden;
+  transition: box-shadow .12s ease, border-color .12s ease;
+}
+.slot:hover { box-shadow: inset 0 0 12px rgba(190, 120, 255, .26), 0 2px 10px rgba(0, 0, 0, .55), 0 0 10px rgba(200, 130, 255, .5); }
+
+.r1 {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 2px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid rgba(180, 140, 220, .14);
+}
+.nm { font-size: 10.5px; color: #bcaad0; letter-spacing: .5px; }
+.lv {
+  font-size: 13px; font-weight: 700; line-height: 1;
+  color: #e8c98a;
+  font-variant-numeric: tabular-nums;
+}
+.lv.l740  { color: #8f8798; }
+.lv.l965  { color: #bda6cd; }
+.lv.l1110 { color: #e8c98a; }
+.lv.l1280 { color: #ffd76e; text-shadow: 0 0 6px rgba(255, 190, 80, .5); }
+
+.r2 { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; }
+.en {
+  font-size: 9px; line-height: 1.2; letter-spacing: .2px;
+  color: #857b93;
+  white-space: nowrap;
+  max-width: 48%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.en-s { text-align: left; }
+.en-b { text-align: right; }
+.en:hover { color: #c0b0d2; }
+.en.on { color: #63e392; text-shadow: 0 0 6px rgba(99, 227, 146, .55); }
+.en.on:hover { color: #8bf0ae; }
+.en input {
+  background: transparent; border: none; outline: none;
+  color: inherit; font: inherit; width: 100%; text-align: inherit;
+}
+
+/* ---------- 装等小浮层 ---------- */
+.lvlpop {
+  position: absolute;
+  display: none;
+  z-index: 30;
+  width: 58px;
+  padding: 3px;
+  grid-template-rows: repeat(4, 1fr);
+  gap: 1px;
+  border: 1px solid rgba(172, 124, 214, .7);
+  border-radius: 3px;
+  background: #1a1027;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .7), 0 0 14px rgba(160, 80, 230, .45);
+}
+.lvlpop .pi {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  color: #c3b0d8;
+  border-radius: 2px;
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+.lvlpop .pi:hover { background: rgba(190, 110, 240, .25); color: #fff; }
+.lvlpop .pi.on { color: #ffe9b0; background: rgba(232, 201, 138, .16); }
+
+/* ---------- 缩放手柄 ---------- */
+.grip {
+  position: absolute; right: -6px; bottom: -6px;
+  width: 18px; height: 18px;
+  cursor: nwse-resize;
+  opacity: .55;
+}
+.grip::after {
+  content: ''; position: absolute; right: 4px; bottom: 4px;
+  width: 8px; height: 8px;
+  border-right: 1px solid rgba(214, 147, 246, .9);
+  border-bottom: 1px solid rgba(214, 147, 246, .9);
+}
+.grip:hover { opacity: 1; }
+
+/* ---------- 功能码弹层 ---------- */
+.modal {
+  position: absolute; left: 0; top: 0; right: 0; bottom: 0;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px;
+  background: rgba(14, 9, 20, .97);
+  border: 1px solid rgba(172, 124, 214, .6);
+  border-radius: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .7);
+}
+.modal.open { display: flex; }
+.mtitle { font-size: 10px; color: #cbb6e2; letter-spacing: 1px; }
+.modal textarea {
+  flex: 1;
+  resize: none;
+  font-family: Consolas, "Microsoft YaHei UI", monospace;
+  font-size: 9px;
+  line-height: 1.45;
+  color: #d8c8ea;
+  background: rgba(0, 0, 0, .35);
+  border: 1px solid rgba(150, 110, 180, .45);
+  border-radius: 3px;
+  padding: 4px 5px;
+  outline: none;
+  word-break: break-all;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.mbtns { display: flex; gap: 4px; }
+.mbtns button {
+  flex: 1;
+  font-family: inherit;
+  font-size: 10px;
+  line-height: 18px;
+  color: #d6c3ea;
+  background: rgba(70, 42, 100, .9);
+  border: 1px solid rgba(150, 110, 180, .5);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.mbtns button:hover { background: rgba(110, 60, 155, .95); color: #fff; }
+.mmsg { font-size: 9px; line-height: 1.3; color: #8ea6c8; min-height: 11px; }
+.mmsg.err { color: #ff8080; }
+.mmsg.ok { color: #63e392; }
+
+/* ---------- 右键菜单 ---------- */
+.menu {
+  position: absolute; z-index: 99; display: none;
+  padding: 3px;
+  min-width: 80px;
+  font-size: 10px; color: #cdb9e2;
+  background: #170e22;
+  border: 1px solid rgba(172, 124, 214, .5);
+  border-radius: 3px;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .65);
+}
+.menu div { padding: 3px 10px; cursor: pointer; white-space: nowrap; border-radius: 2px; }
+.menu div:hover { background: rgba(190, 110, 240, .22); color: #fff; }
+.menu .sep { height: 1px; margin: 3px 4px; background: rgba(172, 124, 214, .25); padding: 0; cursor: default; }

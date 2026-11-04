@@ -1,0 +1,8 @@
+{
+  "name": "gear-overlay",
+  "version": "1.0.0",
+  "description": "JX3 gear score floating overlay",
+  "main": "main.js",
+  "scripts": { "start": "electron ." },
+  "devDependencies": { "electron": "37.10.3" }
+}

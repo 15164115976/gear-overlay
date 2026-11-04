@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>装备速查</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="wrap">
+
+  <!-- 收起态：小图标（按住跟着鼠标走，松开放置；单击展开） -->
+  <div id="icon" class="icon" title="单击展开 · 按住拖动位置">
+    <img src="assets/icon.png" alt="" draggable="false">
+  </div>
+
+  <!-- 展开态：面板（整体透明，只有方块浮在画面上） -->
+  <div id="panel" class="panel" style="display:none">
+    <header class="hd" id="hd">
+      <img class="fold" id="fold" src="assets/icon.png" title="点这里收起" draggable="false">
+      <div class="tabs" id="tabs"></div>
+    </header>
+    <div class="grid" id="grid"></div>
+    <div class="lvlpop" id="lvlpop"></div>
+    <div class="grip" id="grip" title="拖动缩放"></div>
+
+    <!-- 功能码弹层 -->
+    <div class="modal" id="modal">
+      <div class="mtitle" id="mtitle">功能码</div>
+      <textarea id="codeArea" spellcheck="false" placeholder="粘贴功能码后点「导入」"></textarea>
+      <div class="mbtns">
+        <button id="mGen">生成码</button>
+        <button id="mImport">导入</button>
+        <button id="mClose">关闭</button>
+      </div>
+      <div class="mmsg" id="mmsg"></div>
+    </div>
+  </div>
+
+  <div class="menu" id="menu"></div>
+</div>
+<script src="mock.js"></script>
+<script src="renderer.js"></script>
+</body>
+</html>
