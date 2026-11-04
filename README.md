@@ -2,9 +2,21 @@
 
 打本拍卖时用来快速看 / 改装等的置顶小面板。整体透明、无边框、始终在最前面，平时收成一个小图标。
 
-## 启动
+## 下载（免安装）
+
+到 [Releases](https://github.com/15164115976/gear-overlay/releases/latest) 下载 `gear-overlay-v1.0.0-win64.zip`（约 117MB），解压后双击 **装备速查.exe** 直接用，不用安装。
+配置存在程序目录的 `data` 文件夹里，整个文件夹拷到别的电脑，配置也跟着走。
+
+## 从源码运行
 
 双击 `启动.bat`（第一次会自动装运行环境，之后就秒开）。
+
+## 自己打包绿色版
+
+```bash
+npm install              # 装 electron
+node build-release.js    # 产出 dist-portable/ 和 release/*.zip
+```
 
 ## 界面
 
