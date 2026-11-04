@@ -86,6 +86,15 @@ function save() {
   }, 150);
 }
 
+/** 保证整块窗口落在屏幕可视范围里（多屏也管用） */
+function clampToScreen(x, y, w, h) {
+  const d = screen.getDisplayNearestPoint({ x: Math.round(x + w / 2), y: Math.round(y + h / 2) });
+  const wa = d.workArea;
+  const nx = Math.max(wa.x, Math.min(Math.round(x), wa.x + wa.width - w));
+  const ny = Math.max(wa.y, Math.min(Math.round(y), wa.y + wa.height - h));
+  return { x: nx, y: ny };
+}
+
 function panelSize() {
   const z = store.zoom;
   return { w: Math.round(BASE_W * z), h: Math.round(BASE_H * z) };
@@ -109,20 +118,15 @@ function setCollapsed(v) {
   if (!was && store.collapsed) {
     // 展开 → 收起：图标落在收起按钮的位置
     const px = b.x + MARGIN, py = b.y + MARGIN;
-    win.setBounds({
-      x: Math.round(px + FOLD_X * z - ICON_C),
-      y: Math.round(py + FOLD_Y * z - ICON_C),
-      width: ICON_WIN, height: ICON_WIN
-    });
+    const c = clampToScreen(px + FOLD_X * z - ICON_C, py + FOLD_Y * z - ICON_C, ICON_WIN, ICON_WIN);
+    win.setBounds({ x: c.x, y: c.y, width: ICON_WIN, height: ICON_WIN });
   } else if (was && !store.collapsed) {
     // 收起 → 展开：让收起按钮落在刚才图标的位置
     const cx = b.x + ICON_C, cy = b.y + ICON_C;
     const { w, h } = panelSize();
-    win.setBounds({
-      x: Math.round(cx - FOLD_X * z - MARGIN),
-      y: Math.round(cy - FOLD_Y * z - MARGIN),
-      width: w + MARGIN * 2, height: h + MARGIN * 2
-    });
+    const c = clampToScreen(cx - FOLD_X * z - MARGIN, cy - FOLD_Y * z - MARGIN,
+                            w + MARGIN * 2, h + MARGIN * 2);
+    win.setBounds({ x: c.x, y: c.y, width: w + MARGIN * 2, height: h + MARGIN * 2 });
   }
   rememberPos();
 }
@@ -135,10 +139,13 @@ function createWindow() {
   let x, y;
   if (store.pos) { x = store.pos.x; y = store.pos.y; }
   else {
-    const wa = screen.getPrimaryDisplay().workAreaSize;
-    x = Math.round(wa.width * 0.72);
-    y = Math.round((wa.height - h) / 2);
+    const wa = screen.getPrimaryDisplay().workArea;
+    x = wa.x + Math.round(wa.width * 0.72);
+    y = wa.y + Math.round((wa.height - h) / 2);
   }
+  // 上次关在屏幕外 / 换过显示器的情况，开机先拉回可视范围
+  const c = clampToScreen(x, y, w, h);
+  x = c.x; y = c.y;
 
   win = new BrowserWindow({
     x, y, width: w, height: h,
@@ -230,6 +237,15 @@ function registerIpc() {
   ipcMain.on('win:dragEnd', () => {
     if (dragTimer) { clearInterval(dragTimer); dragTimer = null; }
     dragOffset = null;
+    if (win) {
+      const b = win.getBounds();
+      const d = screen.getDisplayNearestPoint({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
+      const wa = d.workArea;
+      // 拖完至少留 80px 在屏幕里，别彻底拖丢
+      const nx = Math.max(wa.x - b.width + 80, Math.min(b.x, wa.x + wa.width - 80));
+      const ny = Math.max(wa.y, Math.min(b.y, wa.y + wa.height - 60));
+      if (nx !== b.x || ny !== b.y) win.setPosition(Math.round(nx), Math.round(ny));
+    }
     rememberPos();
   });
 

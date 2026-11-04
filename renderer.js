@@ -19,7 +19,7 @@ const elMsg = $('mmsg');
 const elMTitle = $('mtitle');
 
 // 只有这几件有大附魔
-const BIG_SLOTS = ['帽子', '上衣', '腰带', '护腕', '武器'];
+const BIG_SLOTS = ['帽子', '上衣', '腰带', '护腕', '鞋子', '武器'];
 
 const page = () => S.pages[S.page] || S.pages[0];
 const saveState = () => api.save({ pages: S.pages, page: S.page });
