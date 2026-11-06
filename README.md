@@ -68,6 +68,12 @@ node build-release.js    # 产出 dist-portable/ 和 release/*.zip
 - 导入：全选删掉旧内容，`Ctrl+V` 粘贴别人的码，点「导入」即可覆盖当前所有角色
 - 一个角色约 350–450 字符，微信直接发就行
 
+## 打不开 / 卡死了怎么办
+
+- 程序自带自愈：渲染进程崩了或卡住，**24 秒内会自动重载**（窗口会闪一下），不用管
+- 还是不行就按 **`Ctrl + Alt + Q`** 强制退出，再重新双击打开
+- 诊断日志在 `%APPDATA%\gear-overlay\app.log`（便携版在 `data\app.log`），里面记录了每次启动、崩溃、自愈
+
 ## 数据
 
 存在 `%APPDATA%\gear-overlay\gear-overlay.json`，关掉再开自动恢复，位置 / 缩放 / 页码都会记住。删掉这个文件就恢复出厂状态。

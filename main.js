@@ -32,6 +32,18 @@ try {
 } catch (e) { /* ignore */ }
 
 const dataFile = () => path.join(app.getPath('userData'), 'gear-overlay.json');
+const logFile = () => path.join(app.getPath('userData'), 'app.log');
+
+function log() {
+  try {
+    const line = new Date().toISOString() + '  ' + Array.prototype.join.call(arguments, ' ');
+    fs.appendFileSync(logFile(), line + '\n');
+    if (fs.statSync(logFile()).size > 200000) fs.writeFileSync(logFile(), '');
+  } catch (e) { /* ignore */ }
+}
+
+// 注意：不要 disableHardwareAcceleration —— 透明窗口走软件渲染后，鼠标命中会按像素 alpha 判定，
+// 面板直接点不动。稳定性靠下面的自愈（render-process-gone / unresponsive / 看门狗）兜。
 
 function newSlot(lv) {
   return { lv: lv || 740, s: { t: '小附魔', on: false }, b: { t: '大附魔', on: false } };
@@ -185,6 +197,44 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'index.html'));
   win.on('closed', () => { win = null; });
 
+  /* ---------- 自愈：渲染进程崩了 / 卡住了就自己重载，不用用户去杀进程 ---------- */
+  let recoverAt = 0;
+  let recoverCount = 0;
+  const recover = (why) => {
+    if (!win) return;
+    const now = Date.now();
+    if (now - recoverAt < 5000) return;          // 别连续重载
+    recoverAt = now;
+    recoverCount++;
+    log('recover #' + recoverCount, why);
+    try { win.webContents.reload(); } catch (e) { log('reload failed', String(e)); }
+  };
+
+  win.webContents.on('render-process-gone', (e, d) => {
+    log('render-process-gone', JSON.stringify(d));
+    setTimeout(() => recover('gone'), 400);
+  });
+  win.webContents.on('unresponsive', () => {
+    log('unresponsive');
+    recover('unresponsive');
+  });
+  win.webContents.on('did-finish-load', () => log('loaded'));
+  win.webContents.on('crashed', () => log('crashed'));
+
+  // 看门狗：20 秒探一次，4 秒没回应就当作卡死
+  let wd = setInterval(() => {
+    if (!win || win.isDestroyed()) return;
+    let done = false;
+    const timer = setTimeout(() => {
+      if (done) return;
+      done = true;
+      recover('watchdog timeout');
+    }, 4000);
+    win.webContents.executeJavaScript('1').then(() => { done = true; clearTimeout(timer); })
+      .catch(() => { done = true; clearTimeout(timer); });
+  }, 20000);
+  win.on('closed', () => { clearInterval(wd); wd = null; });
+
   // 开发用：GEAR_SHOT=<png路径> 启动后截图并退出
   if (process.env.GEAR_SHOT) {
     setTimeout(async () => {
@@ -265,11 +315,20 @@ const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
   app.quit();
 } else {
-  app.on('second-instance', () => { if (win) { win.show(); win.focus(); } });
+  app.on('second-instance', () => {
+    if (!win) return;
+    if (store.collapsed) {
+      setCollapsed(false);
+      win.webContents.send('ui:collapsed', false);
+    }
+    win.show();
+    win.setAlwaysOnTop(true, 'screen-saver');
+  });
   app.commandLine.appendSwitch('wm-window-animations-disabled');
 
   app.whenReady().then(() => {
     store = load();
+    log('=== start v' + require('./package.json').version + ' ===');
     registerIpc();
     createWindow();
 
@@ -283,6 +342,6 @@ if (!gotLock) {
     globalShortcut.register('Control+Alt+Q', () => quitApp());
   });
 
-  app.on('will-quit', () => globalShortcut.unregisterAll());
+  app.on('will-quit', () => { log('quit'); globalShortcut.unregisterAll(); });
   app.on('window-all-closed', () => app.quit());
 }
