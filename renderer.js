@@ -346,7 +346,11 @@ document.addEventListener('mousedown', (e) => {
   pdrag = { sx: e.screenX, sy: e.screenY, active: false, icon: onIcon };
 }, true);
 
+let lastPing = 0;
 window.addEventListener('mousemove', (e) => {
+  // 告诉主进程"我还收得到鼠标"，用来判断输入通道有没有断
+  const now0 = Date.now();
+  if (now0 - lastPing > 120) { lastPing = now0; api.inputPing(); }
   if (pdrag && !pdrag.active) {
     if (Math.abs(e.screenX - pdrag.sx) + Math.abs(e.screenY - pdrag.sy) > 3) {
       pdrag.active = true;

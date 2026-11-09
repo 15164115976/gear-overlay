@@ -14,6 +14,7 @@ if (!window.api) {
       minZoom: 0.9, maxZoom: 2.2
     }),
     save: () => {}, setFocusable: () => {}, setZoom: () => {}, collapse: () => {},
-    dragStart: () => {}, dragEnd: () => {}, quit: () => {}, onCollapsed: () => {}
+    inputPing: () => {},
+  dragStart: () => {}, dragEnd: () => {}, quit: () => {}, onCollapsed: () => {}
   };
 }

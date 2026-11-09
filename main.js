@@ -21,6 +21,8 @@ const LEVELS = [740, 965, 1110, 1280];
 let win = null;
 let store = null;
 let dragTimer = null;
+let lastInput = Date.now();
+let lastRebuild = 0;
 let dragOffset = null;
 
 // 便携版：exe 同目录若有 portable.marker，配置就存在 exe 旁边的 data 目录里
@@ -33,6 +35,15 @@ try {
 
 const dataFile = () => path.join(app.getPath('userData'), 'gear-overlay.json');
 const logFile = () => path.join(app.getPath('userData'), 'app.log');
+
+// ---- 省内存：限制 V8 堆、关掉用不到的功能 ----
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=48 --max-semi-space-size=2');
+app.commandLine.appendSwitch('disable-features', 'MediaRouter,Translate,OptimizationHints,CalculateNativeWinOcclusion,HardwareMediaKeyHandling');
+app.commandLine.appendSwitch('disk-cache-size', '1048576');   // 磁盘缓存 1MB
+app.commandLine.appendSwitch('media-cache-size', '1048576');
+app.commandLine.appendSwitch('disable-component-update');
+app.commandLine.appendSwitch('no-pings');
+app.commandLine.appendSwitch('renderer-process-limit', '1');
 
 function log() {
   try {
@@ -143,6 +154,18 @@ function setCollapsed(v) {
   rememberPos();
 }
 
+/** 重建窗口（不是 reload）：连窗体一起换掉，专治「画面在、点不动」 */
+function rebuildWindow(why) {
+  if (!win) return;
+  log('rebuild', why || '');
+  const b = win.getBounds();
+  store.pos = { x: b.x, y: b.y };
+  const w = win;
+  win = null;
+  try { w.destroy(); } catch (e) {}
+  setTimeout(() => { if (!win) createWindow(); }, 400);
+}
+
 /** 退出：正常 quit，1.2 秒还没退就直接 exit，避免卡住关不掉 */
 function quitApp() {
   rememberPos();
@@ -218,10 +241,11 @@ function createWindow() {
     log('unresponsive');
     recover('unresponsive');
   });
+  lastInput = Date.now();
   win.webContents.on('did-finish-load', () => log('loaded'));
   win.webContents.on('crashed', () => log('crashed'));
 
-  // 看门狗：20 秒探一次，4 秒没回应就当作卡死
+  // 看门狗：20 秒探一次页面还活着没，4 秒没回应就当卡死重载
   let wd = setInterval(() => {
     if (!win || win.isDestroyed()) return;
     let done = false;
@@ -233,7 +257,35 @@ function createWindow() {
     win.webContents.executeJavaScript('1').then(() => { done = true; clearTimeout(timer); })
       .catch(() => { done = true; clearTimeout(timer); });
   }, 20000);
-  win.on('closed', () => { clearInterval(wd); wd = null; });
+
+  /* 输入看门狗：光标在窗口里移动了，页面却一直没收到 mousemove → 输入通道断了，重建窗口。
+     页面卡死会由上面的 JS 探针兜住；这里专门治「画面正常但点不动」。 */
+  let starved = 0;
+  let lastPt = null;
+  let iw = setInterval(() => {
+    if (!win || win.isDestroyed()) return;
+    const p = screen.getCursorScreenPoint();
+    const b = win.getBounds();
+    const inside = p.x >= b.x && p.x < b.x + b.width && p.y >= b.y && p.y < b.y + b.height;
+    const moved = lastPt && (Math.abs(p.x - lastPt.x) + Math.abs(p.y - lastPt.y) > 6);
+    lastPt = p;
+    if (!inside) { starved = 0; return; }
+    if (!moved) return;
+    if (Date.now() - lastInput > 2500) {
+      starved++;
+      if (starved >= 2) {
+        starved = 0;
+        // 冷却：1 分钟内只重建一次，避免"输入本来就收不到"时反复重建
+        if (Date.now() - lastRebuild > 60000) {
+          lastRebuild = Date.now();
+          log('input starved -> rebuild');
+          rebuildWindow('input starved');
+        }
+      }
+    } else starved = 0;
+  }, 700);
+
+  win.on('closed', () => { clearInterval(wd); clearInterval(iw); wd = null; iw = null; });
 
   // 开发用：GEAR_SHOT=<png路径> 启动后截图并退出
   if (process.env.GEAR_SHOT) {
@@ -274,6 +326,8 @@ function registerIpc() {
   ipcMain.on('win:collapse', (e, v) => setCollapsed(!!v));
 
   // 图标拖动：主进程直接轮询光标位置让窗口跟着走（不依赖 mousemove，才跟得住）
+  ipcMain.on('win:input', () => { lastInput = Date.now(); });
+
   ipcMain.on('win:dragStart', (e, d) => {
     if (!win) return;
     const b = win.getBounds();
@@ -340,6 +394,8 @@ if (!gotLock) {
 
     // 万一界面点不到，用快捷键直接退
     globalShortcut.register('Control+Alt+Q', () => quitApp());
+    // 画面在但点不动时，重建窗口
+    globalShortcut.register('Control+Alt+R', () => rebuildWindow('hotkey'));
   });
 
   app.on('will-quit', () => { log('quit'); globalShortcut.unregisterAll(); });

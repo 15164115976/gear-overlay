@@ -76,6 +76,8 @@ function copyRuntime() {
   fs.mkdirSync(path.join(APP, 'resources', 'locales'), { recursive: true });
 
   const KEEP_LOCALES = new Set(['zh-CN.pak', 'en-US.pak']);
+  // 这个面板不用 WebGPU / D3D12，dxcompiler 用不上（省 26MB）；vk_swiftshader 留作兜底
+  const SKIP = new Set(['dxcompiler.dll', 'dxil.dll']);
 
   for (const name of fs.readdirSync(DIST)) {
     const from = path.join(DIST, name);
@@ -99,6 +101,7 @@ function copyRuntime() {
       continue;
     }
     if (st.isDirectory()) continue;   // 其它目录不收
+    if (SKIP.has(name)) continue;
     fs.copyFileSync(from, path.join(APP, name));
   }
 
