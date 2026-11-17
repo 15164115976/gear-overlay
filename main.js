@@ -1,12 +1,12 @@
-const { app, BrowserWindow, ipcMain, globalShortcut, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, globalShortcut, screen, Tray, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const MARGIN = 18;          // 面板四周留给外发光的透明边
 const BASE_W = 164;         // 面板基准尺寸（缩放 1.0 时）
 const BASE_H = 366;
-const ICON_WIN = 78;        // 收起时窗口尺寸
-const ICON_C = 39;          // 图标中心在窗口内的位置
+const ICON_WIN = 42;        // 收起时窗口尺寸
+const ICON_C = 21;          // 图标中心在窗口内的位置
 const MIN_ZOOM = 0.9;
 const MAX_ZOOM = 2.2;
 
@@ -83,6 +83,7 @@ function load() {
         if (old && typeof old === 'object') {
           slots[k] = {
             lv: old.lv || 740,
+            n: old.n || '',
             s: old.s || { t: '小附魔', on: false },
             b: old.b || { t: '大附魔', on: false }
           };
@@ -118,9 +119,11 @@ function clampToScreen(x, y, w, h) {
   return { x: nx, y: ny };
 }
 
+let contentH = BASE_H;   // 面板实际内容高度（长装备名换行会撑高）
+
 function panelSize() {
   const z = store.zoom;
-  return { w: Math.round(BASE_W * z), h: Math.round(BASE_H * z) };
+  return { w: Math.round(BASE_W * z), h: Math.round(Math.max(BASE_H, contentH) * z) };
 }
 
 function rememberPos() {
@@ -152,6 +155,27 @@ function setCollapsed(v) {
     win.setBounds({ x: c.x, y: c.y, width: w + MARGIN * 2, height: h + MARGIN * 2 });
   }
   rememberPos();
+}
+
+let tray = null;
+function createTray() {
+  if (tray) return;
+  try {
+    tray = new Tray(path.join(__dirname, 'assets', 'icon.png'));
+    tray.setToolTip('装备速查');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: '显示 / 收起', click: () => {
+          if (!win) { createWindow(); return; }
+          setCollapsed(!store.collapsed);
+          win.webContents.send('ui:collapsed', store.collapsed);
+          win.show();
+        } },
+      { label: '重建窗口', click: () => rebuildWindow('tray') },
+      { type: 'separator' },
+      { label: '退出', click: () => quitApp() }
+    ]));
+    tray.on('double-click', () => { if (win) win.show(); });
+  } catch (e) { log('tray failed', String(e)); }
 }
 
 /** 重建窗口（不是 reload）：连窗体一起换掉，专治「画面在、点不动」 */
@@ -328,6 +352,18 @@ function registerIpc() {
   // 图标拖动：主进程直接轮询光标位置让窗口跟着走（不依赖 mousemove，才跟得住）
   ipcMain.on('win:input', () => { lastInput = Date.now(); });
 
+  // 面板被长名字撑高时，把窗口一起调高（只增不减，避免抖动）
+  ipcMain.on('win:panelH', (e, h) => {
+    if (!win || !h || h < 40) return;
+    const need = Math.min(Math.ceil(h), 900);
+    if (need <= contentH + 2) return;
+    contentH = need;
+    const z = store.zoom;
+    const b = win.getBounds();
+    win.setBounds({ x: b.x, y: b.y, width: Math.round(BASE_W * z) + MARGIN * 2,
+                    height: Math.round(contentH * z) + MARGIN * 2 });
+  });
+
   ipcMain.on('win:dragStart', (e, d) => {
     if (!win) return;
     const b = win.getBounds();
@@ -383,6 +419,7 @@ if (!gotLock) {
   app.whenReady().then(() => {
     store = load();
     log('=== start v' + require('./package.json').version + ' ===');
+    createTray();
     registerIpc();
     createWindow();
 

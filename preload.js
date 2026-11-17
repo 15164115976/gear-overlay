@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('api', {
   collapse: (v) => ipcRenderer.send('win:collapse', v),
   dragStart: (x, y) => ipcRenderer.send('win:dragStart', { x, y }),
   inputPing: () => ipcRenderer.send('win:input'),
+  setPanelHeight: (h) => ipcRenderer.send('win:panelH', h),
   dragEnd: () => ipcRenderer.send('win:dragEnd'),
   quit: () => ipcRenderer.send('app:quit'),
   onCollapsed: (cb) => ipcRenderer.on('ui:collapsed', (e, v) => cb(v))

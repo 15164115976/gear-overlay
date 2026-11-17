@@ -22,9 +22,9 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 
 /* ---------- 收起态的小图标 ---------- */
 .icon {
-  position: absolute; left: 10px; top: 10px;
-  width: 58px; height: 58px;
-  border-radius: 7px;
+  position: absolute; left: 7px; top: 7px;
+  width: 28px; height: 28px;
+  border-radius: 5px;
   overflow: hidden;
   cursor: grab;
   box-shadow: 0 0 0 1px rgba(214, 147, 246, .55),
@@ -47,7 +47,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 /* ---------- 展开态面板：整体透明，只有方块浮在画面上 ---------- */
 .panel {
   position: absolute; left: 18px; top: 18px;
-  width: 164px; height: 366px;
+  width: 164px; min-height: 366px;
   padding: 12px 10px 8px;
   display: flex; flex-direction: column;
   background: none;
@@ -137,13 +137,20 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .slot:hover { box-shadow: inset 0 0 12px rgba(190, 120, 255, .26), 0 2px 10px rgba(0, 0, 0, .55), 0 0 10px rgba(200, 130, 255, .5); }
 
 .r1 {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 2px;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 3px;
   padding-bottom: 3px;
   border-bottom: 1px solid rgba(180, 140, 220, .14);
 }
-.nm { font-size: 10.5px; color: #bcaad0; letter-spacing: .5px; }
+.nm {
+  font-size: 8.5px; line-height: 1.25; letter-spacing: .2px;
+  color: #bcaad0;
+  flex: 1; min-width: 0;
+  word-break: break-all;
+  max-height: 21px; overflow: hidden;
+  cursor: text;
+}
 .lv {
-  font-size: 13px; font-weight: 700; line-height: 1;
+  font-size: 10.5px; font-weight: 700; line-height: 1.1; flex: 0 0 auto;
   color: #e8c98a;
   font-variant-numeric: tabular-nums;
 }
@@ -151,6 +158,16 @@ body.dragging, body.dragging * { cursor: grabbing !important; }
 .lv.l965  { color: #bda6cd; }
 .lv.l1110 { color: #e8c98a; }
 .lv.l1280 { color: #ffd76e; text-shadow: 0 0 6px rgba(255, 190, 80, .5); }
+
+.nameinput {
+  position: absolute; left: 1px; top: 1px; right: 1px; z-index: 25;
+  width: calc(100% - 2px);
+  font-size: 9px; padding: 2px 3px;
+  font-family: inherit;
+  background: #1a1024; color: #fff;
+  border: 1px solid #b06ad8; border-radius: 3px;
+  outline: none;
+}
 
 .r2 { display: flex; align-items: flex-end; justify-content: space-between; gap: 2px; }
 .en {

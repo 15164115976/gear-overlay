@@ -33,6 +33,20 @@ function renderAll() {
   hidePop();
   renderTabs();
   renderGrid();
+  fitHeight();
+}
+
+// 长装备名换行会把面板撑高，把实际高度报给主进程去调窗口（归一化到 zoom=1 的基准）
+let lastSentH = 0;
+function fitHeight() {
+  if (S.collapsed || !api.setPanelHeight) return;
+  requestAnimationFrame(() => {
+    // 面板有 min-height / flex 压缩，offsetHeight 量不到溢出部分，用 scrollHeight
+    const h = Math.round(Math.max(elPanel.offsetHeight, elPanel.scrollHeight));
+    if (h < 40 || Math.abs(h - lastSentH) < 4) return;
+    lastSentH = h;
+    api.setPanelHeight(h);
+  });
 }
 
 function renderTabs() {
@@ -82,7 +96,7 @@ function makePage(name) {
 }
 
 function newSlot() {
-  return { lv: 740, s: { t: '小附魔', on: false }, b: { t: '大附魔', on: false } };
+  return { lv: 740, n: '', s: { t: '小附魔', on: false }, b: { t: '大附魔', on: false } };
 }
 
 function renderGrid() {
@@ -99,7 +113,17 @@ function renderGrid() {
     r1.className = 'r1';
     const nm = document.createElement('span');
     nm.className = 'nm';
-    nm.textContent = k;
+    nm.textContent = st.n || k;
+    nm.title = k + (st.n ? '（当前：' + st.n + '）' : '') + ' · 双击改名字';
+    nm.ondblclick = (e) => {
+      e.stopPropagation();
+      hidePop();
+      editName(d, st.n || k, (v) => {
+        st.n = (v && v !== k) ? v : '';
+        saveState();
+        renderGrid();
+      });
+    };
     const lv = document.createElement('span');
     lv.className = 'lv l' + st.lv;
     lv.textContent = st.lv;
@@ -124,7 +148,7 @@ function renderGrid() {
     d.append(r1, r2);
 
     d.onclick = (e) => {
-      if (e.target.closest('.en')) return;
+      if (e.target.closest('.en, .nm, .nameinput')) return;
       openPop(d, k);
     };
 
@@ -173,6 +197,31 @@ function hidePop() {
 }
 
 /* ---------------- 行内编辑 ---------------- */
+function editName(slotEl, value, done) {
+  if (slotEl.querySelector('.nameinput')) return;
+  const inp = document.createElement('input');
+  inp.className = 'nameinput';
+  inp.value = value;
+  slotEl.appendChild(inp);
+  api.setFocusable(true);
+  setTimeout(() => { inp.focus(); inp.select(); }, 70);
+  let finished = false;
+  const commit = (ok) => {
+    if (finished) return;
+    finished = true;
+    api.setFocusable(false);
+    const v = inp.value.trim();
+    inp.remove();
+    if (ok && v) done(v); else renderGrid();
+  };
+  inp.onblur = () => commit(true);
+  inp.onkeydown = (e) => {
+    e.stopPropagation();
+    if (e.key === 'Enter') commit(true);
+    if (e.key === 'Escape') commit(false);
+  };
+}
+
 function editText(host, value, done) {
   const inp = document.createElement('input');
   inp.value = value;
